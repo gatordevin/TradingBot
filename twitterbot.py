@@ -19,5 +19,33 @@ today = datetime.now()
 today = today.replace(hour=7, minute=30)
 tweets = client.get_users_tweets(id=3690023483, exclude="replies", start_time=today)
 
+class StockEntry():
+    def __init__(self, ticker, buy_type, buy_value):
+        self.ticker = ticker
+        if "c" in buy_type:
+            self.buy_type = "call"
+        else:
+            self.buy_type = "put"
+        self.buy_value = buy_value
+
+    def __str__(self):
+        return_string = "Ticker: " + self.ticker + "\n"
+        return_string += "Option type: " + self.buy_type + "\n"
+        return_string += "Option value: " + self.buy_value + "\n"
+        return return_string
+
+include_lotto = False
+stock_entries = []
 for tweet in tweets.data:
-    print(tweet)
+    if "entry" in str(tweet):
+        if "LOTTO" in str(tweet) and not include_lotto:
+            pass
+        else:
+            words = str(tweet).split(" ")
+            ticker = words[1]
+            buy_type = words[2][-1]
+            buy_value = words[2][:-1]
+            stock_entries.append(StockEntry(ticker, buy_type, buy_value))
+
+for entry in stock_entries:
+    print(entry)
