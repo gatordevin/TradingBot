@@ -2,6 +2,8 @@ import tweepy
 import configparser
 from datetime import datetime
 from dateutil import tz
+from threading import Thread
+
 config = configparser.ConfigParser(interpolation=None)
 config.read('twitterkeys.ini')
 
@@ -27,12 +29,24 @@ class StockEntry():
         else:
             self.buy_type = "put"
         self.buy_value = buy_value
+        self.filled = False
+        self.closed = False
+        self.option_amount = 0
+        self.stop_loss_upper = 0.1
+        self.stop_loss_lower = 0.1
 
     def __str__(self):
         return_string = "Ticker: " + self.ticker + "\n"
         return_string += "Option type: " + self.buy_type + "\n"
         return_string += "Option value: " + self.buy_value + "\n"
         return return_string
+
+    def set_loss(self, stop_loss):
+        self.stop_loss_lower = stop_loss[0]
+        self.stop_loss_upper = stop_loss[1]
+    
+    def buy(self):
+        print("Buying " + self.ticker + "...")
 
 include_lotto = False
 stock_entries = []
