@@ -1,7 +1,11 @@
 # TradingBot
 AutoTrade Goldman Sacks with ThinkOrSwim
 
+# Pip Requirements
+```
+pip install tweepy
 
+```
 ## TwitterBot Setup
 ### OAuth Setup for Twitter
 See following https://docs.tweepy.org/en/latest/authentication.html#introduction for information on OAuth setup

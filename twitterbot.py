@@ -22,8 +22,9 @@ today = today.replace(hour=7, minute=30)
 tweets = client.get_users_tweets(id=3690023483, exclude="replies", start_time=today)
 
 class StockEntry():
-    def __init__(self, ticker, buy_type, buy_value):
+    def __init__(self, ticker, buy_type, buy_value, buy_price):
         self.ticker = ticker
+        self.buy_price = buy_price
         if "c" in buy_type:
             self.buy_type = "call"
         else:
@@ -39,6 +40,7 @@ class StockEntry():
         return_string = "Ticker: " + self.ticker + "\n"
         return_string += "Option type: " + self.buy_type + "\n"
         return_string += "Option value: " + self.buy_value + "\n"
+        return_string += "Bought price: " + self.buy_price + "\n"
         return return_string
 
     def set_loss(self, stop_loss):
@@ -56,10 +58,12 @@ for tweet in tweets.data:
             pass
         else:
             words = str(tweet).split(" ")
+            print(words)
             ticker = words[1]
             buy_type = words[2][-1]
             buy_value = words[2][:-1]
-            stock_entries.append(StockEntry(ticker, buy_type, buy_value))
+            buy_price = words[4]
+            stock_entries.append(StockEntry(ticker, buy_type, buy_value, buy_price))
 
 for entry in stock_entries:
     print(entry)
