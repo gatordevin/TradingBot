@@ -18,8 +18,7 @@ refresh_token = config['td']['RefreshToken']
 # Intialize our `Credentials` object.
 td_credentials = TdCredentials(
     client_id=client_id,
-    redirect_uri=redirect_uri,
-    credential_file='config/td_credentials.json'
+    redirect_uri=redirect_uri
 )
 
 # Initalize the `TdAmeritradeClient`

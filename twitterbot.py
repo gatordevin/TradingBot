@@ -19,8 +19,10 @@ api = tweepy.API(auth)
 
 today = datetime.now()
 today = today.replace(hour=7, minute=30)
-tweets = client.get_users_tweets(id=3690023483, exclude="replies", start_time=today)
-
+try:
+    tweets = client.get_users_tweets(id=3690023483, exclude="replies", start_time=today)
+except:
+    print("could not get")
 class StockEntry():
     def __init__(self, ticker, buy_type, buy_value, buy_price):
         self.ticker = ticker
