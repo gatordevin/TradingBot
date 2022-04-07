@@ -8,12 +8,15 @@ tdTrader = TDTrader("config/td_credentials.json")
 # ticker, price = tdTrader.get_option("CAT", "PUT", 222.5)
 # tdTrader.buy_oco_option(ticker, price, 1)
 
-while(stockChecker.get_stock_alerts()==[]):
-    sleep(1)
-    tdTrader.validate_key()
-# order = tdTrader.get_most_recent_order_id()
-while(True):
-    # print(tdTrader.order_filled(order["orderId"]))
-    tdTrader.validate_key()
-    tdTrader.fill_stock_alert(stockChecker.get_stock_alerts()[0], price_limit=600, scale_to_price=True)
-    sleep(1)
+index = 0
+while True:
+    while(len(stockChecker.get_stock_alerts())==index):
+        sleep(1)
+        tdTrader.validate_key()
+    ordered = tdTrader.fill_stock_alert(stockChecker.get_stock_alerts()[index], price_limit=650, scale_to_price=True)
+    if ordered:
+        while(True):
+            tdTrader.validate_key()
+            ordered = tdTrader.fill_stock_alert(stockChecker.get_stock_alerts()[index], price_limit=650, scale_to_price=True)
+            sleep(1)
+    index += 1

@@ -66,7 +66,7 @@ class TDTrader():
         return self.__account_service.get_accounts()[0]["securitiesAccount"]["currentBalances"]["cashAvailableForTrading"]
 
     def fill_stock_alert(self, stockAlert : StockAlert, quantity=1, price_limit=300, scale_to_price=False):
-        if( not stockAlert.purchased):
+        if( not stockAlert.purchased and not stockAlert.lotto):
             option_data = self.get_option(stockAlert.get_option_ticker(), stockAlert.get_option_type(), stockAlert.get_strike_price())
             if(option_data!=None):
                 option_symbol, current_price = option_data
@@ -78,12 +78,15 @@ class TDTrader():
                 if(order_id==None):
                     print("order cancelled")
                 stockAlert.set_order_id(order_id)
+                return True
+            return False
         else:
             option_data = self.get_option(stockAlert.get_option_ticker(), stockAlert.get_option_type(), stockAlert.get_strike_price())
             if(option_data!=None):
                 option_symbol, current_price = option_data
-                percent = ((current_price / stockAlert.get_purchase_price())-1)*100
+                percent = (((current_price*100)-1 / (stockAlert.get_last_price())*100)-1)*100
                 print(stockAlert.get_option_ticker() + ": stock order placed: Return: " + str(percent))
+            return False
 
     def get_option(self, ticker, option_type, price):
         start = datetime.now() - timedelta(days=datetime.now().weekday())
