@@ -47,14 +47,20 @@ class Twitter:
             access_token=self.__auth_dict['access_token'], 
             access_token_secret=self.__auth_dict['access_token_secret']
         )
+        self.time = datetime.utcnow()
 
     def get_user(self, handle) -> TwitterUser:
         user_response = self.__client.get_user(username=handle)
         twitter_user = TwitterUser(user_response)
         return twitter_user
 
-    def get_user_messages(self, user : TwitterUser, start_time : datetime, max_results=25) -> list[TwitterMessage]:
-        tweet_response = tweepy.Paginator(self.__client.get_users_tweets, id=user.id,tweet_fields=["created_at"], exclude=["replies", "retweets"], start_time=start_time, max_results=100).flatten(max_results)
+    def get_user_messages(self, user : TwitterUser, start_time : datetime=None, max_results=25) -> list[TwitterMessage]:
+        if start_time == None:
+            start_time = self.time
+        if max_results>100:
+            tweet_response = tweepy.Paginator(self.__client.get_users_tweets, id=user.id,tweet_fields=["created_at"], exclude=["replies", "retweets"], start_time=start_time.astimezone(tz.gettz("UTC")), max_results=100).flatten(max_results)
+        else:
+            tweet_response = tweepy.Paginator(self.__client.get_users_tweets, id=user.id,tweet_fields=["created_at"], exclude=["replies", "retweets"], start_time=start_time.astimezone(tz.gettz("UTC")), max_results=max_results).flatten(max_results)
         # print(tweet_response)
         # for tweet in tweet_response:
         #     print(tweet)

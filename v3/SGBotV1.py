@@ -2,7 +2,7 @@
 from datetime import datetime, timedelta
 from math import floor
 from Parsers import StockAlertInfo
-from TD import TD, TDAccount, TDOCOOrder, TDOption, TDOptionParams, TDOrder
+from TD import TD, RecursiveTDOCOOrder, TDAccount, TDOCOOrder, TDOption, TDOptionParams, TDOrder
 
 
 class SGBot():
@@ -30,7 +30,11 @@ class SGBot():
 
             option = options_chain.options[0]
             
-            order_price = option.ask
+            orer_price_label = self.trading_strategy.get("order_price", "alert")
+            if(orer_price_label=="alert"):
+                order_price = alert.buy_price
+            else:
+                order_price = option.last
 
             if(alert.alert_type == "entry"):
                 if(self.trading_strategy.get("maximum_option_price", float("inf"))>order_price>self.trading_strategy.get("minimum_option_price", 0)):
@@ -40,17 +44,19 @@ class SGBot():
                     lowest_balance = self.trade_balance_limit
                     if(self.remaining_balance<lowest_balance):
                         lowest_balance = self.remaining_balance
-                    if(account_balance<lowest_balance):
-                        lowest_balance = account_balance
+                    if self.trading_strategy.get("check_account_balance", True):
+                        if(account_balance<lowest_balance):
+                            lowest_balance = account_balance
                     if(total_option_price>lowest_balance):
                         return None
                     option_number = floor(lowest_balance/total_option_price)
-                    print(account_balance)
-                    print(lowest_balance)
+                    max_contract_number = self.trading_strategy.get("max_number_of_contracts", float("inf"))
+                    if option_number>max_contract_number:
+                        option_number = max_contract_number
                     stop_loss = self.trading_strategy.get("stop_loss_percent", 0)
                     stop_limit = self.trading_strategy.get("stop_limit_percent", 0)
                     if stop_loss != 0 and stop_limit != 0:
-                        oco_order = TDOCOOrder(
+                        oco_order = RecursiveTDOCOOrder(
                             price=order_price, 
                             amount=option_number, 
                             symbol=option.symbol, 

@@ -1,4 +1,5 @@
 from Twitter import *
+import re
 
 class StockAlertInfo():
     def __init__(self, alert_info : dict):
@@ -21,8 +22,12 @@ class StockAlertInfo():
         return stock_alert
 
 class DailyRecap():
-    def __init__(self, daily_alerts : list[StockAlertInfo]):
-        self.__daily_alerts = daily_alerts
+    def __init__(self, daily_alerts : list[StockAlertInfo, float]):
+        self.__daily_alerts : list[StockAlertInfo, float] = daily_alerts
+    
+    def get_stocks(self):
+        for stock_alert, sell_price in self.__daily_alerts:
+            yield stock_alert, sell_price
 
 class SGTwitterTDParser():
     def __init__(self):
@@ -47,7 +52,6 @@ class SGTwitterTDParser():
         tweet_text = twitter_message.text
         split_text = tweet_text.split(" ")
         if "DAILY RECAP" in tweet_text:
-            print(tweet_text)
             daily_alerts = []
             split_text_copy = split_text
             daily_alerts_filtered = []
@@ -56,8 +60,21 @@ class SGTwitterTDParser():
                 adjusted_split_text : list = split_text_copy
                 for idx, split in enumerate(split_text):
                     if daily_alert.stock in split:
-                        if "@" not in split_text[idx+2] and daily_alert.buy_price == float(split_text[idx+1]):
-                            daily_alerts_filtered.append([daily_alert, float(split_text[idx+3])])
+                        price = re.sub("[^0123456789\.]","",split_text[idx+1])
+                        if price == "":
+                            pass
+                        else:
+                            price = float(price)
+                        if "@" not in split_text[idx+2] and daily_alert.buy_price == price:
+                            if "(" in split_text[idx+3]:
+                                potential_sell = split_text[idx+3].split("(")[0]
+                                if potential_sell != "":
+                                    sell_price = potential_sell
+                                else:
+                                    sell_price = split_text[idx+2]
+                            else:
+                                sell_price = split_text[idx+3]
+                            daily_alerts_filtered.append([daily_alert, float(re.sub("[^0123456789\.]","",sell_price))])
                             adjusted_split_text.pop(idx)
                             break
                         else:
@@ -77,10 +94,13 @@ class SGTwitterTDParser():
                 contract_type = "CALL"
             else:
                 contract_type = "PUT"
+            buy_price = None
             for idx, split in enumerate(split_text):
                 if split == "@":
                     buy_price = float(split_text[idx+1])
                     break
+            if buy_price == None:
+                buy_price = float(split_text[3])
             lotto = False
             for split in split_text:
                 if split == "lotto" or split == "LOTTO":

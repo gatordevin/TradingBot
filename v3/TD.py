@@ -42,7 +42,7 @@ class TDAccount():
         self.time : datetime = datetime.now()
 
     def get_positions(self) -> list[TDPosition]:
-        td_positions = [TDPosition(position) for position in self.__account_dict["positions"]]
+        td_positions = [TDPosition(position) for position in self.__account_dict.get("positions", [])]
         return td_positions
 
     def __str__(self) -> str:
@@ -265,8 +265,121 @@ class TDOCOOrder():
     def get_order_dict(self) -> dict:
         return self.order_dict
 
+class RecursiveTDOCOOrder():
+    def __init__(self, price, amount, symbol, stop_order_percent, limit_order_percent):
+        super().__init__()
+        self.price : float = price
+        self.amount : int = amount
+        self.symbol : str = symbol
+        self.stop_order_percent : float = stop_order_percent
+        self.limit_order_percent : float = limit_order_percent
+        self.stop_order_price : float = round(price*(1-stop_order_percent),2)
+        self.limit_order_price : float = round(price*(1-limit_order_percent),2)
+        self.time : datetime = datetime.now()
+        self.order_dict : dict={
+            "orderStrategyType": "TRIGGER",
+            "session": "NORMAL",
+            "duration": "DAY",
+            "orderType": "LIMIT",
+            "price": price,
+            "orderLegCollection": [
+                {
+                "instruction": "BUY_TO_OPEN",
+                "quantity": amount,
+                "instrument": {
+                    "assetType": "OPTION",
+                    "symbol": symbol
+                }
+                }
+            ],
+            "childOrderStrategies": [
+                {
+                "orderStrategyType": "OCO",
+                "childOrderStrategies": [
+                    {
+                    "orderStrategyType": "TRIGGER",
+                    "session": "NORMAL",
+                    "duration": "GOOD_TILL_CANCEL",
+                    "orderType": "LIMIT",
+                    "price": self.limit_order_price,
+                    "orderLegCollection": [
+                        {
+                        "instruction": "SELL_TO_OPEN",
+                        "quantity": int(amount/2),
+                        "instrument": {
+                            "assetType": "OPTION",
+                            "symbol": symbol
+                        }
+                        }
+                    ],
+                    "childOrderStrategies": [
+                    {
+                    "orderStrategyType": "OCO",
+                    "childOrderStrategies": [
+                        {
+                        "orderStrategyType": "SINGLE",
+                        "session": "NORMAL",
+                        "duration": "GOOD_TILL_CANCEL",
+                        "orderType": "LIMIT",
+                        "price": self.limit_order_price*2,
+                        "orderLegCollection": [
+                            {
+                            "instruction": "SELL_TO_OPEN",
+                            "quantity": int(int(amount/2)/2),
+                            "instrument": {
+                                "assetType": "OPTION",
+                                "symbol": symbol
+                            }
+                            }
+                        ]
+                        },
+                        {
+                        "orderStrategyType": "SINGLE",
+                        "session": "NORMAL",
+                        "duration": "GOOD_TILL_CANCEL",
+                        "orderType": "STOP",
+                        "stopPrice": self.stop_order_price*2,
+                        "orderLegCollection": [
+                            {
+                            "instruction": "SELL_TO_OPEN",
+                            "quantity": int(amount/2),
+                            "instrument": {
+                                "assetType": "OPTION",
+                                "symbol": symbol 
+                            }
+                            }
+                        ]
+                        }
+                    ]
+                    }
+                ]
+                    },
+                    {
+                    "orderStrategyType": "SINGLE",
+                    "session": "NORMAL",
+                    "duration": "GOOD_TILL_CANCEL",
+                    "orderType": "STOP",
+                    "stopPrice": self.stop_order_price,
+                    "orderLegCollection": [
+                        {
+                        "instruction": "SELL_TO_OPEN",
+                        "quantity": amount,
+                        "instrument": {
+                            "assetType": "OPTION",
+                            "symbol": symbol 
+                        }
+                        }
+                    ]
+                    }
+                ]
+                }
+            ]
+            }
+    def get_order_dict(self) -> dict:
+        return self.order_dict
+
 class TD():
-    def __init__(self, auth_file="config/td_credentials.json"):
+    def __init__(self, auth_file="config/td_credentials.json", paper_trade_balance=0):
         self.__authenticator = TDAuthenticator(auth_file)
         self.__client = TdAmeritradeClient(
             credentials=self.__authenticator.get_credentials()
@@ -278,12 +391,26 @@ class TD():
         self.__stream_services = self.__stream_client.services()
         self.__stream_services.quality_of_service(qos_level='0')
 
+        self.__paper_trade_balance = paper_trade_balance
+        self.__paper_trading = False
+        if self.__paper_trade_balance:
+            self.__paper_trading = True
+
+
     def get_accounts(self) -> list[TDAccount]:
         while True:
             try:
+                td_accounts = []
                 accounts = self.__account_service.get_accounts()
-                td_account = [TDAccount(account) for account in accounts]
-                return td_account
+                for account in accounts:
+                    if self.__paper_trading:
+                        account_dict = account[list(account.keys())[0]]
+                        account_dict["currentBalances"]["cashAvailableForTrading"] = self.__paper_trade_balance
+                        account_dict["currentBalances"]["liquidationValue"] = self.__paper_trade_balance
+                        account_dict["initialBalances"]["cashAvailableForTrading"] = self.__paper_trade_balance
+                        account_dict["initialBalances"]["accountValue"] = self.__paper_trade_balance
+                    td_accounts.append(TDAccount(account))
+                return td_accounts
             except HTTPError:
                 print("Failed to get accounts")
             sleep(1)
