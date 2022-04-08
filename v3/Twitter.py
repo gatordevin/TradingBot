@@ -53,8 +53,14 @@ class Twitter:
         twitter_user = TwitterUser(user_response)
         return twitter_user
 
-    def get_user_messages(self, user : TwitterUser, start_time : datetime) -> list[TwitterMessage]:
-        tweet_response = self.__client.get_users_tweets(id=user.id,tweet_fields=["created_at"], exclude=["replies", "retweets"], start_time=start_time, max_results=25).data
+    def get_user_messages(self, user : TwitterUser, start_time : datetime, max_results=25) -> list[TwitterMessage]:
+        tweet_response = tweepy.Paginator(self.__client.get_users_tweets, id=user.id,tweet_fields=["created_at"], exclude=["replies", "retweets"], start_time=start_time, max_results=100).flatten(max_results)
+        # print(tweet_response)
+        # for tweet in tweet_response:
+        #     print(tweet)
+        # tweet_response = self.__client.get_users_tweets()
+        # print(tweet_response)
+        # tweet_response = tweet_response.data
         if not tweet_response:
             tweet_response = []
         messages = [TwitterMessage(response) for response in tweet_response]

@@ -17,8 +17,8 @@ parser = SGTwitterTDParser()
 bot = SGBot(
     trading_strategy={
         "trade_number_target" : 1,
-        "trade_lottos" : False,
-        "minimum_option_price" : 0.8,
+        "trade_lottos" : True,
+        "minimum_option_price" : 0.1,
         "stop_limit_percent" : 0.1,
         "stop_loss_percent" : -0.1,
         "maximum_option_price" : 8.0,
