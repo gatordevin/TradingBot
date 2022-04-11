@@ -441,6 +441,8 @@ class TD():
     def fill_order(self, td_order : TDOrder, td_account : TDAccount):
         while True:
             try:
+                if self.__paper_trading:
+                    pass
                 order = self.__order_service.place_order(account_id=td_account.id,order_dict=td_order.get_order_dict())
                 return order
             except HTTPError:

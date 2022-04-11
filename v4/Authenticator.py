@@ -4,7 +4,7 @@ import json
 from tda import auth, client
 from selenium import webdriver
 import chromedriver_autoinstaller
-
+from tweepy import OAuthHandler
 class Authenticator():
     def __init__(self, auth_dict : dict):
         self.__auth_dict : dict = auth_dict
@@ -104,6 +104,7 @@ class TwitterAuthenticator(Authenticator):
             "auth_file" : auth_file
         }
         super().__init__(self.__auth_dict)
+        self.__auth = OAuthHandler(self.__auth_dict["api_key"], self.__auth_dict["api_key_secret"])
 
     def on_auth_create(self) -> None:
         with open(self.__auth_dict["auth_file"], 'w') as auth_file:
@@ -114,6 +115,9 @@ class TwitterAuthenticator(Authenticator):
 
     def get_twitter_keys(self) -> dict: 
         return self.__auth_dict
+
+    def get_auth(self) -> OAuthHandler:
+        return self.__auth
 
 class DiscordAuthenticator(Authenticator):
     def __init__(self, auth_file : str="config/discord_credentials.json"):
