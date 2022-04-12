@@ -67,10 +67,11 @@ class Twitter(tweepy.StreamingClient):
         )
         super().__init__(self.__auth_dict['bearer_token'])
         self.tweet_listeners = []
-        rules = self.get_rules().data
-        if rules is not None:
-            for rule in self.get_rules().data:
-                self.delete_rules(rule.id)
+        # rules = self.get_rules().data
+        # print(rules)
+        # if rules is not None:
+        #     for rule in self.get_rules().data:
+        #         self.delete_rules(rule.id)
         thread = Thread(target=self.filter, kwargs={"tweet_fields":["created_at"]})
         thread.daemon = True
         thread.start()
@@ -86,8 +87,10 @@ class Twitter(tweepy.StreamingClient):
 
     def get_user(self, handle) -> TwitterUser:
         user_response = self.__client.get_user(username=handle)
-        self.add_rules(tweepy.StreamRule("lang:en -is:retweet -is:reply from:"+handle))
+        print(user_response)
+        # self.add_rules(tweepy.StreamRule("lang:en -is:retweet -is:reply from:"+handle))
         twitter_user = TwitterUser(user_response)
+        self.tweet_listener(twitter_user)
         return twitter_user
 
     def get_user_messages(self, user : TwitterUser, start_time : datetime=None, max_results=25) -> list[TwitterMessage]:

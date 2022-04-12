@@ -1,26 +1,34 @@
 from time import sleep
 from Parsers import SGTwitterTDParser
 from SGBotV1 import SGBot
-from TD import TD, TDOption
+from TD import TD, TDOCOOrder, TDOption
 from time import sleep, monotonic
 from Twitter import Twitter
 
 td_api = TD() #paper_trading_file="trading/test.json"
 twitter_api = Twitter()
-# user = twitter_api.get_user("Ryan11D")
+user = twitter_api.get_user("Ryan11D")
 parser = SGTwitterTDParser()
 
 account = td_api.accounts[0]
 google_stock = account.get_stock('GOOG')
 google_option : TDOption = account.get_option('GOOG', "CALL",2670,7)
+
+print("amd added")
 amd = account.get_stock('AMD')
 
+print("Stock price: " + str(amd.ask_price))
+order = TDOCOOrder(amd.ask_price, 1, "AMD", 0.1, 0.1)
+td_api.fill_order(order, account)
+
 while(True):
-    print("Option price: " + str(google_option.ask))
-    # if(user.is_new_tweets()):
-    #     new_tweets = user.get_new_tweets()
-    #     for tweet in new_tweets:
-    #         print(tweet.text)
+    
+    print(account.current_trading_balance)
+    if(user.is_new_tweets()):
+        new_tweets = user.get_new_tweets()
+        for tweet in new_tweets:
+            print(tweet.text)
+        stock_alerts = parser.parse_messages(new_tweets)
     sleep(1)
 # bot = SGBot(
 #     trading_strategy={

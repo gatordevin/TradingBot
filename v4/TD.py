@@ -150,10 +150,11 @@ class TDStock():
             self.open_price = self.__stock_dict["OPEN_PRICE"]
         if self.__stock_dict.get("NET_CHANGE", None) is not None:
             self.net_change = self.__stock_dict["NET_CHANGE"]
-        if self.__stock_dict.get("NET_CHANGE", None) is not None:
+        if self.__stock_dict.get("PE_RATIO", None) is not None:
             self.pe_ratio = self.__stock_dict["PE_RATIO"]
 
     def on_stock_change(self, data):
+        sleep(0.1)
         self.set_values(data)
 
 class TDOption():
@@ -197,22 +198,38 @@ class TDOption():
     def set_values(self, stock_dict):
         self.__stock_dict = stock_dict
         self.symbol = self.__stock_dict["key"]
-        self.cusip = self.__stock_dict["cusip"]
-        self.bid_price = self.__stock_dict["BID_PRICE"]
-        self.ask_price = self.__stock_dict["ASK_PRICE"]
-        self.last_price = self.__stock_dict["LAST_PRICE"]
-        self.bid_size = self.__stock_dict["BID_SIZE"]
-        self.ask_size = self.__stock_dict["ASK_SIZE"]
-        self.ask_id = self.__stock_dict["ASK_ID"]
-        self.bid_id = self.__stock_dict["BID_ID"]
-        self.total_volume = self.__stock_dict["TOTAL_VOLUME"]
-        self.high_price = self.__stock_dict["HIGH_PRICE"]
-        self.low_price = self.__stock_dict["LOW_PRICE"]
-        self.close_price = self.__stock_dict["CLOSE_PRICE"]
-        self.volatility = self.__stock_dict["VOLATILITY"]
-        self.open_price = self.__stock_dict["OPEN_PRICE"]
-        self.net_change = self.__stock_dict["NET_CHANGE"]
-        self.pe_ratio = self.__stock_dict["PE_RATIO"]
+        if self.__stock_dict.get("cusip", None) is not None:
+            self.cusip = self.__stock_dict["cusip"]
+        if self.__stock_dict.get("BID_PRICE", None) is not None:
+            self.bid_price = self.__stock_dict["BID_PRICE"]
+        if self.__stock_dict.get("ASK_PRICE", None) is not None:
+            self.ask_price = self.__stock_dict["ASK_PRICE"]
+        if self.__stock_dict.get("LAST_PRICE", None) is not None:
+            self.last_price = self.__stock_dict["LAST_PRICE"]
+        if self.__stock_dict.get("BID_SIZE", None) is not None:
+            self.bid_size = self.__stock_dict["BID_SIZE"]
+        if self.__stock_dict.get("ASK_SIZE", None) is not None:
+            self.ask_size = self.__stock_dict["ASK_SIZE"]
+        if self.__stock_dict.get("ASK_ID", None) is not None:
+            self.ask_id = self.__stock_dict["ASK_ID"]
+        if self.__stock_dict.get("BID_ID", None) is not None:
+            self.bid_id = self.__stock_dict["BID_ID"]
+        if self.__stock_dict.get("TOTAL_VOLUME", None) is not None:
+            self.total_volume = self.__stock_dict["TOTAL_VOLUME"]
+        if self.__stock_dict.get("HIGH_PRICE", None) is not None:
+            self.high_price = self.__stock_dict["HIGH_PRICE"]
+        if self.__stock_dict.get("LOW_PRICE", None) is not None:
+            self.low_price = self.__stock_dict["LOW_PRICE"]
+        if self.__stock_dict.get("CLOSE_PRICE", None) is not None:
+            self.close_price = self.__stock_dict["CLOSE_PRICE"]
+        if self.__stock_dict.get("VOLATILITY", None) is not None:
+            self.volatility = self.__stock_dict["VOLATILITY"]
+        if self.__stock_dict.get("OPEN_PRICE", None) is not None:
+            self.open_price = self.__stock_dict["OPEN_PRICE"]
+        if self.__stock_dict.get("NET_CHANGE", None) is not None:
+            self.net_change = self.__stock_dict["NET_CHANGE"]
+        if self.__stock_dict.get("PE_RATIO", None) is not None:
+            self.pe_ratio = self.__stock_dict["PE_RATIO"]
 
     def on_option_change(self, data):
         self.set_values(data)
@@ -226,16 +243,24 @@ class TDOption():
         return print_string
     
 class TDAccount():
-    def __init__(self, account_dict : dict, td_client : client.Client):
+    def __init__(self, account_dict : dict, td_client : client.Client, id=None, paper_account=None):
         self.__td_client : client.Client = td_client
+        self.__id = id
+        self.__paper_acount : PaperTrader = paper_account
         self.set_values(account_dict)
 
         self.time : datetime = datetime.now()
 
         self.stream_client : StreamClient = StreamClient(self.__td_client, account_id=self.id)
-        self.__account_thread = Thread(target=asyncio.run,args=[self.main_thread()])
-        self.__account_thread.daemon = True
-        self.__account_thread.start()
+
+        # loop = asyncio.get_event_loop()
+        self.__listener_thread = Thread(target=asyncio.run, args=[self.main_thread()])
+        # self.__handler_thread = Thread(target=asyncio.run,args=[self.run_streaming_handler())
+        # loop.create_task(self.run_streaming_handler())
+        # self.__handler_thread.daemon = True
+        # self.__handler_thread.start()
+        self.__listener_thread.daemon = True
+        self.__listener_thread.start()
 
         self.__order_listeners = set()
         self.order_listener(self.on_order)
@@ -258,7 +283,7 @@ class TDAccount():
         self.__option_listeners.add(listener)
 
     def equity_handler(self, messages):
-        print("equity change")
+        # print("equity change")
         for message in messages["content"]:
             for stock in self.__stock_listeners:
                 stock : TDStock
@@ -266,9 +291,8 @@ class TDAccount():
                     stock.on_stock_change(message)
 
     def options_handler(self, messages):
-        print(messages)
+        # print("option change")
         for message in messages["content"]:
-            print(message)
             for option in self.__option_listeners:
                 option : TDOption
                 if option.symbol==message["key"]:
@@ -285,7 +309,10 @@ class TDAccount():
         return td_positions
 
     def update_account(self) -> dict:
-        account_dict = self.__td_client.get_account(self.id, fields=[Client.Account.Fields.ORDERS,Client.Account.Fields.POSITIONS]).json()
+        if(self.__id==None):
+            account_dict = self.__td_client.get_account(self.id, fields=[Client.Account.Fields.ORDERS,Client.Account.Fields.POSITIONS]).json()
+        else:
+            account_dict = self.__paper_acount.get_account()[0]
         self.set_values(account_dict)
 
     def get_orders(self) -> list[TDOrder]:
@@ -296,7 +323,10 @@ class TDAccount():
         self.name : str = list(account_dict.keys())[0]
         self.__account_dict : dict = account_dict[self.name]
         self.type : str = self.__account_dict["type"]
-        self.id : str = self.__account_dict["accountId"]
+        if(self.__id==None):
+            self.id : str = self.__account_dict["accountId"]
+        else:
+            self.id = self.__id
         self.day_trader : bool = self.__account_dict["isDayTrader"]
         self.positions : list[TDPosition] = self.get_positions()
         self.orders : list[TDOrder] = self.get_orders()
@@ -332,14 +362,18 @@ class TDAccount():
 
     async def main_thread(self):
         await self.stream_client.login()
+        await self.listener()
+        
+
+    async def listener(self):
+        
         await self.stream_client.quality_of_service(StreamClient.QOSLevel.EXPRESS)
         self.stream_client.add_account_activity_handler(self.activity_handler)
         self.stream_client.add_level_one_equity_handler(self.equity_handler)
         self.stream_client.add_level_one_option_handler(self.options_handler)
-        await self.stream_client.level_one_equity_subs(["GOOG"])
         await self.stream_client.account_activity_sub()
-        asyncio.create_task(self.run_streaming_handler())
         while True:
+            await self.stream_client.handle_message()
             if len(self.__stock_alerts)>self.__stock_alert_size:
                 for stock_alert in list(self.__stock_alerts)[self.__stock_alert_size:]:
                     await self.stream_client.level_one_equity_subs([stock_alert])
@@ -354,19 +388,21 @@ class TDAccount():
     async def run_streaming_handler(self):
         while True:
             await self.stream_client.handle_message()
+        #     await self.stream_client.handle_message()
 
 
     def activity_handler(self, messages):
-        for message in messages["content"]:
-            message_type : str = message["MESSAGE_TYPE"]
-            message_data : str = message["MESSAGE_DATA"]
-            if(message_type == "SUBSCRIBED"):
-                print("Account stream activated for: " + self.id)
-            else:
-                if(message_data != ""):
-                    data_dict = json.loads(json.dumps(xmltodict.parse(message_data)))
-                    for listener in self.__order_listeners:
-                        listener(data_dict)
+        if(self.__id==None):
+            for message in messages["content"]:
+                message_type : str = message["MESSAGE_TYPE"]
+                message_data : str = message["MESSAGE_DATA"]
+                if(message_type == "SUBSCRIBED"):
+                    print("Account stream activated for: " + self.id)
+                else:
+                    if(message_data != ""):
+                        data_dict = json.loads(json.dumps(xmltodict.parse(message_data)))
+                        for listener in self.__order_listeners:
+                            listener(data_dict)
                     
     def __str__(self) -> str:
         print_string = f"Name: {self.name}\n"
@@ -474,7 +510,7 @@ class TD():
         while True:
             try:
                 if self.__paper_trading:
-                    pass
+                    order = self.__paper_trader.fill_order(td_order)
                 else:
                     order = self.__td_client.place_order(account_id=td_account.id,order_spec=td_order.get_order_dict())
                 return order
@@ -495,15 +531,28 @@ class TD():
                         listener(data_dict)
 
     def get_accounts(self) -> list[TDAccount]:
+        td_accounts = []
         if(self.__paper_trading):
+            accounts_json = self.__td_client.get_accounts(fields=[Client.Account.Fields.ORDERS,Client.Account.Fields.POSITIONS]).json()
+            # td_account = TDAccount(accounts_json[0], self.__td_client)
+            # self.stream_client = td_account.stream_client
+            
+            account_dict : dict = accounts_json[0]["securitiesAccount"]
+            id : str = account_dict["accountId"]
+
             accounts_json = self.__paper_trader.get_account()
+            for account in accounts_json:
+                td_account = TDAccount(account, self.__td_client, id=id, paper_account=self.__paper_trader)
+                self.stream_client = td_account.stream_client
+                td_accounts.append(td_account)
         else:
             accounts_json = self.__td_client.get_accounts(fields=[Client.Account.Fields.ORDERS,Client.Account.Fields.POSITIONS]).json()
-        td_accounts = []
-        for account in accounts_json:
-            td_account = TDAccount(account, self.__td_client)
-            td_accounts.append(td_account)
-            self.stream_client = td_account.stream_client
+            streamer = True
+            for account in accounts_json:
+                td_account = TDAccount(account, self.__td_client)
+                td_accounts.append(td_account)
+                self.stream_client = td_account.stream_client
+                streamer = False
         
         return td_accounts
 

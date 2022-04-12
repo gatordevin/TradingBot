@@ -1,6 +1,6 @@
 import os
 import json
-
+# from TD import TDOCOOrder
 class PaperTrader():
     def __init__(self, paper_trading_file="trading/test.json"):
         self.paper_trading_file = paper_trading_file
@@ -13,6 +13,9 @@ class PaperTrader():
         else:
             with open(self.paper_trading_file, 'r') as auth_file:
                 self.account_dict = json.load(auth_file)
+
+    def fill_order(self, order):
+        print(order.get_order_dict())
 
     def create_new_account(self) -> dict:
         account_dict = {}
