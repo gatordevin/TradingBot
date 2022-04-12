@@ -12,7 +12,7 @@ parser = SGTwitterTDParser()
 
 account = td_api.accounts[0]
 google_stock = account.get_stock('GOOG')
-google_option : TDOption = account.get_option('GOOG', "CALL",2670,7)
+google_option : TDOption = account.get_option('GOOG', "CALL",2625,7)
 
 print("amd added")
 amd = account.get_stock('AMD')
@@ -23,7 +23,7 @@ td_api.fill_order(order, account)
 
 while(True):
     
-    print(account.current_trading_balance)
+    print(google_option.ask)
     if(user.is_new_tweets()):
         new_tweets = user.get_new_tweets()
         for tweet in new_tweets:

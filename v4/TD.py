@@ -196,16 +196,17 @@ class TDOption():
         self.time : datetime = datetime.now()
 
     def set_values(self, stock_dict):
+        # print(stock_dict)
         self.__stock_dict = stock_dict
         self.symbol = self.__stock_dict["key"]
         if self.__stock_dict.get("cusip", None) is not None:
             self.cusip = self.__stock_dict["cusip"]
         if self.__stock_dict.get("BID_PRICE", None) is not None:
-            self.bid_price = self.__stock_dict["BID_PRICE"]
+            self.bid = self.__stock_dict["BID_PRICE"]
         if self.__stock_dict.get("ASK_PRICE", None) is not None:
-            self.ask_price = self.__stock_dict["ASK_PRICE"]
+            self.ask = self.__stock_dict["ASK_PRICE"]
         if self.__stock_dict.get("LAST_PRICE", None) is not None:
-            self.last_price = self.__stock_dict["LAST_PRICE"]
+            self.last = self.__stock_dict["LAST_PRICE"]
         if self.__stock_dict.get("BID_SIZE", None) is not None:
             self.bid_size = self.__stock_dict["BID_SIZE"]
         if self.__stock_dict.get("ASK_SIZE", None) is not None:
