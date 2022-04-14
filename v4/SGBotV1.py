@@ -19,16 +19,7 @@ class SGBot():
         if(alert.option):
             if not self.trading_strategy.get("trade_lottos", False) and alert.lotto:
                 return None
-            option_params = TDOptionParams(
-                symbol=alert.stock,
-                contract_type=alert.contract_type,
-                option_type="SC",
-                strike=alert.strike_price,
-                days_to_exp=7
-            )
-            options_chain = self.td_api.get_options_chain(option_params)
-
-            option = options_chain.options[0]
+            option : TDOption = self.td_account.get_option(alert.stock,alert.contract_type, alert.strike_price, days_to_expiration=7)
             
             orer_price_label = self.trading_strategy.get("order_price", "alert")
             if(orer_price_label=="alert"):
@@ -39,7 +30,7 @@ class SGBot():
             if(alert.alert_type == "entry"):
                 if(self.trading_strategy.get("maximum_option_price", float("inf"))>order_price>self.trading_strategy.get("minimum_option_price", 0)):
                     total_option_price = option.multiplier*order_price+1
-                    self.td_account = self.td_api.get_account_by_id(self.td_account.id)
+                    # self.td_account = self.td_api.get_account_by_id(self.td_account.id)
                     account_balance = self.td_account.current_trading_balance
                     lowest_balance = self.trade_balance_limit
                     if(self.remaining_balance<lowest_balance):
@@ -56,7 +47,7 @@ class SGBot():
                     stop_loss = self.trading_strategy.get("stop_loss_percent", 0)
                     stop_limit = self.trading_strategy.get("stop_limit_percent", 0)
                     if stop_loss != 0 and stop_limit != 0:
-                        oco_order = RecursiveTDOCOOrder(
+                        oco_order = TDOCOOrder(
                             price=order_price, 
                             amount=option_number, 
                             symbol=option.symbol, 
@@ -68,7 +59,7 @@ class SGBot():
                             self.remaining_balance-=total_option_price*option_number
                             self.trade_balance_limit-=total_option_price*option_number
                         print("Made order")
-                        return order
+                        return option, total_option_price
                     else:
                         return None
                 else:

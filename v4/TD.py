@@ -292,11 +292,11 @@ class TDAccount():
                     stock.on_stock_change(message)
 
     def options_handler(self, messages):
-        # print("option change")
         for message in messages["content"]:
             for option in self.__option_listeners:
                 option : TDOption
                 if option.symbol==message["key"]:
+                    print(option.symbol + " change")
                     option.on_option_change(message)
 
     def order_listener(self, listener):
@@ -349,6 +349,10 @@ class TDAccount():
             call_map = option_dict["callExpDateMap"]
             for date in call_map.keys():
                 option = TDOption(call_map[date])
+                for old_option in self.__option_listeners:
+                    old_option : TDOption
+                    if old_option.symbol == option.symbol:
+                        return old_option
                 self.__option_alerts.append(option.symbol)
                 td_options.append(option)
                 self.option_listener(option)
@@ -356,6 +360,10 @@ class TDAccount():
             put_map = option_dict["putExpDateMap"]
             for date in put_map.keys():
                 option = TDOption(put_map[date])
+                for old_option in self.__option_listeners:
+                    old_option : TDOption
+                    if old_option.symbol == option.symbol:
+                        return old_option
                 self.__option_alerts.append(option.symbol)
                 td_options.append(option)
                 self.option_listener(option)
