@@ -12,31 +12,14 @@ import xmltodict
 import json
 from PaperTrader import PaperTrader
 
-class TDOrderLeg():
-    def __init__(self, order_leg_dict : dict):
-        self.__order_leg_dict = order_leg_dict
-        self.order_leg_type = self.__order_leg_dict["orderLegType"]
-        self.leg_id = self.__order_leg_dict["legId"]
-        self.asset_type = self.__order_leg_dict["instrument"]["assetType"]
-        self.cusip = self.__order_leg_dict["instrument"]["cusip"]
-        self.symbol = self.__order_leg_dict["instrument"]["symbol"]
-        self.instruction = self.__order_leg_dict["instruction"]
-        self.position_effect = self.__order_leg_dict["positionEffect"]
-        self.quantity = self.__order_leg_dict["quantity"]
-
-    def __str__(self) -> str:
-        print_string = f"Asset Type: {self.asset_type}\n"
-        print_string += f"Symbol: {self.symbol}\n"
-        print_string += f"Instruction: {self.instruction}\n"
-        print_string += f"Position Effect: {self.position_effect}\n"
-        print_string += f"Quantity: {self.quantity}\n"
-        return print_string
-
 class TDOrder():
     def __init__(self, order_dict : dict):
         self.__order_dict = order_dict
         self.session = self.__order_dict["session"]
         self.duration = self.__order_dict["duration"]
+        self.order_leg_collection = self.__order_dict.get("orderLegCollection", [])
+        self.symbol = self.order_leg_collection[0]["instrument"]["symbol"]
+        self.option_type = self.order_leg_collection[0]["instrument"]["putCall"]
         self.order_type = self.__order_dict["orderType"]
         self.complex_order_strategy_type = self.__order_dict["complexOrderStrategyType"]
         self.quantity = self.__order_dict["quantity"]
@@ -44,8 +27,10 @@ class TDOrder():
         self.remaining_quantity = self.__order_dict["remainingQuantity"]
         self.requested_destination = self.__order_dict["requestedDestination"]
         self.destination_link_name = self.__order_dict["destinationLinkName"]
-        self.price = self.__order_dict["price"]
-        self.order_legs = self.get_order_leg()
+        self.price = self.__order_dict.get("price", 0)
+        if(self.price==0):
+            self.price = self.__order_dict.get("stopPrice", 0)
+        self.child_orders = self.get_child_orders()
         self.order_strategy_type = self.__order_dict["orderStrategyType"]
         self.id = self.__order_dict["orderId"]
         self.cancelable = self.__order_dict["cancelable"]
@@ -56,9 +41,17 @@ class TDOrder():
         self.tag = self.__order_dict["tag"]
         self.account_id = self.__order_dict["accountId"]
 
-    def get_order_leg(self) -> list[TDOrderLeg]:
-        order_legs = [TDOrderLeg(order_leg) for order_leg in self.__order_dict.get("orderLegCollection", [])]
-        return order_legs
+    def get_child_orders(self) -> list:
+        child_orders = []
+        for order in self.__order_dict.get("childOrderStrategies", []):
+            order : dict
+            order_strategies = order.get("childOrderStrategies", [])
+            for strategy in order_strategies:
+                strategy : dict
+                child_order = TDOrder(strategy)
+                child_orders.append(child_order)
+        return child_orders
+
 
     def __str__(self) -> str:
         print_string = f"Order Type: {self.order_type}\n"
@@ -79,6 +72,7 @@ class TDOrder():
 
 class TDPosition():
     def __init__(self, position_dict : dict):
+        # print(json.dumps(position_dict, indent=1))
         self.__position_dict : dict = position_dict
         self.average_price : float = self.__position_dict["averagePrice"]
         self.long_quantity : float = self.__position_dict["longQuantity"]
@@ -398,6 +392,9 @@ class TDAccount():
         while True:
             await self.stream_client.handle_message()
         #     await self.stream_client.handle_message()
+    
+    def cancel_order(self, order_id):
+        return self.__td_client.cancel_order(order_id, self.id)
 
 
     def activity_handler(self, messages):
@@ -431,11 +428,15 @@ class TDAccount():
             print_string += f"Orders: {order}\n"
         return print_string
 
-class TDOCOOrder():
-    def __init__(self, price, amount, symbol, stop_order_percent, limit_order_percent):
+class TDOTOCOOrder():
+    def __init__(self, price, amount, symbol, stop_order_percent, limit_order_percent, sell_amount=0):
         super().__init__()
         self.price : float = price
         self.amount : int = amount
+        if(sell_amount!=0):
+            self.sell_amount : int = sell_amount
+        else:
+            self.sell_amount = self.sell_amount
         self.symbol : str = symbol
         self.stop_order_percent : float = stop_order_percent
         self.limit_order_percent : float = limit_order_percent
@@ -471,7 +472,7 @@ class TDOCOOrder():
                     "orderLegCollection": [
                         {
                         "instruction": "SELL_TO_OPEN",
-                        "quantity": amount,
+                        "quantity": self.sell_amount,
                         "instrument": {
                             "assetType": "OPTION",
                             "symbol": symbol
@@ -499,6 +500,55 @@ class TDOCOOrder():
                 ]
                 }
             ]
+            }
+    def get_order_dict(self) -> dict:
+        return self.order_dict
+
+class TDSingleOrder():
+    def __init__(self, amount, symbol, limit_price=0, stop_price=0):
+        super().__init__()
+        self.price : float = stop_price
+        if(self.price==0):
+            self.price = limit_price
+        assert self.price!=0
+        self.amount : int = amount
+        self.symbol : str = symbol
+        self.time : datetime = datetime.now()
+        if stop_price == 0:
+            self.order_dict : dict={
+                "orderStrategyType": "SINGLE",
+                    "session": "NORMAL",
+                    "duration": "GOOD_TILL_CANCEL",
+                    "orderType": "LIMIT",
+                    "price": self.price,
+                    "orderLegCollection": [
+                        {
+                        "instruction": "SELL_TO_OPEN",
+                        "quantity": self.amount,
+                        "instrument": {
+                            "assetType": "OPTION",
+                            "symbol": symbol
+                        }
+                        }
+                    ]
+            }
+        elif(limit_price==0):
+            self.order_dict : dict={
+                "orderStrategyType": "SINGLE",
+                    "session": "NORMAL",
+                    "duration": "GOOD_TILL_CANCEL",
+                    "orderType": "STOP",
+                    "stopPrice": self.price,
+                    "orderLegCollection": [
+                        {
+                        "instruction": "SELL_TO_OPEN",
+                        "quantity": self.amount,
+                        "instrument": {
+                            "assetType": "OPTION",
+                            "symbol": symbol
+                        }
+                        }
+                    ]
             }
     def get_order_dict(self) -> dict:
         return self.order_dict
