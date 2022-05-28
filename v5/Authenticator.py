@@ -6,15 +6,16 @@ from selenium import webdriver
 import chromedriver_autoinstaller
 from tweepy import OAuthHandler
 class Authenticator():
-    def __init__(self, auth_dict : dict):
+    def __init__(self, auth_dict : dict, auth_type):
         self.__auth_dict : dict = auth_dict
         self.__auth_file : str = self.__auth_dict["auth_file"]
+        self.__auth_type : str = auth_type
         os.makedirs(os.path.dirname(self.__auth_file), exist_ok=True)
         if not os.path.isfile(self.__auth_file):
             keys_list : list[str] = list(self.__auth_dict.keys())
             for key in keys_list:
                 if key != "auth_file":
-                    self.__auth_dict[key] = input(f"{key}: ")
+                    self.__auth_dict[key] = input(f"{self.__auth_type} {key}: ")
             self.on_auth_create()
         else:
             self.__json_dict = json.load(open(self.__auth_dict["auth_file"]))
@@ -37,7 +38,7 @@ class TDApiAuthenticator(Authenticator):
             "auth_file" : auth_file
         }
         self.td_api_credentials_token_file = auth_file.split(".")[0] + "_token.json"
-        super().__init__(self.__auth_dict)
+        super().__init__(self.__auth_dict, "TDApi")
 
     def on_auth_create(self) -> None:
         print("auth create")
@@ -67,7 +68,7 @@ class TDAuthenticator(Authenticator):
             "redirect_url" : "",
             "auth_file" : auth_file
         }
-        super().__init__(self.__auth_dict)
+        super().__init__(self.__auth_dict, "TD")
 
     def on_auth_create(self) -> None:
         self.__td_credentials : TdCredentials = TdCredentials(
@@ -103,7 +104,7 @@ class TwitterAuthenticator(Authenticator):
             "access_token_secret" : "",
             "auth_file" : auth_file
         }
-        super().__init__(self.__auth_dict)
+        super().__init__(self.__auth_dict, "Twitter")
         self.__auth = OAuthHandler(self.__auth_dict["api_key"], self.__auth_dict["api_key_secret"])
 
     def on_auth_create(self) -> None:
@@ -125,7 +126,7 @@ class DiscordAuthenticator(Authenticator):
             "token" : "",
             "auth_file" : auth_file
         }
-        super().__init__(self.__auth_dict)
+        super().__init__(self.__auth_dict, "Discord")
 
     def on_auth_create(self) -> None:
         with open(self.__auth_dict["auth_file"], 'w') as auth_file:

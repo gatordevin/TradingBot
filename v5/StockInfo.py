@@ -43,3 +43,6 @@ class TwitterUserStockInfo(StockInfoSource):
 
     def on_tweet(self, tweet : TwitterMessage):
         self.on_data_source(tweet)
+
+    def get_twitter_user(self):
+        return self.__twitter_user

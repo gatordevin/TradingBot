@@ -69,6 +69,8 @@ class SGBot():
             orer_price_label = self.trading_strategy.get("order_price", "alert")
             if(orer_price_label=="alert"):
                 order_price = alert.buy_price
+            elif(orer_price_label=="ask"):
+                order_price = option.ask
             else:
                 order_price = option.last
 

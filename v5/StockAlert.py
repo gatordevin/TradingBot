@@ -16,7 +16,7 @@ class DailyRecapAlertSource():
         self.__daily_recap_sinks : list[DailyRecapAlertSink] = []
         super().__init__()
 
-    def add_sink(self, sink : DailyRecapAlertSink):
+    def ad_recap_sink(self, sink : DailyRecapAlertSink):
         self.__daily_recap_sinks.append(sink)
 
     def on_recap_source(self, data : dict):
@@ -64,7 +64,7 @@ class StockAlertSource():
         super().__init__()
         self.__stock_alert_sinks : list[StockAlertSink] = []
 
-    def add_sink(self, sink : StockAlertSink):
+    def add_stock_alert_sink(self, sink : StockAlertSink):
         self.__stock_alert_sinks.append(sink)
 
     def on_stock_alert_source(self, data : dict):

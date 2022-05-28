@@ -43,12 +43,16 @@ class TwitterUser:
         temp = self.new_tweets
         self.new_tweets = []
         return temp
+
+    def get_messages(self) -> list[TwitterMessage]:
+        return self.messages
     
     def on_tweet(self, tweet : TwitterMessage):
         for message in self.messages:
             message : TwitterMessage
             if message.id == tweet.id:
                 return
+        print("new twitter message")
         self.messages.append(tweet)
         self.new_tweets.append(tweet)
         for listener in self.__tweet_listeners:
@@ -70,7 +74,8 @@ class TwitterClient(tweepy.StreamingClient):
             consumer_key=self.__auth_dict['api_key'], 
             consumer_secret=  self.__auth_dict['api_key_secret'], 
             access_token=self.__auth_dict['access_token'], 
-            access_token_secret=self.__auth_dict['access_token_secret']
+            access_token_secret=self.__auth_dict['access_token_secret'], 
+            wait_on_rate_limit=True
         )
         super().__init__(self.__auth_dict['bearer_token'])
         self.__users = {}
@@ -81,7 +86,8 @@ class TwitterClient(tweepy.StreamingClient):
         self.time = datetime.now()
 
     def twitter_streaming_main(self):
-        self.filter(tweet_fields = ["created_at"], expansions=["author_id"])
+        print("Twitter stream started")
+        self.filter(tweet_fields = ["created_at"], expansions=["author_id"], threaded=False  )
 
     def on_tweet(self, tweet : dict):
         twitter_message : TwitterMessage = TwitterMessage(tweet)
@@ -106,21 +112,27 @@ class TwitterClient(tweepy.StreamingClient):
             self.on_tweet(tweet)
     
     def get_user(self, handle : str):
-        for user in list(self.__users.keys()):
-            if user == handle:
-                return self.__users[handle]
-        user_response = self.__client.get_user(username=handle)
-        rules = self.get_rules().data
-        rule_present = False
-        for rule in rules:
-            if handle in rule.value:
-                rule_present = True
-        if not rule_present:
-            self.add_rules(tweepy.StreamRule("lang:en -is:retweet -is:reply from:"+handle))
-        twitter_user : TwitterUser = TwitterUser(user_response)
-        self.add_tweet_listener(twitter_user)
-        self.__users[handle] = twitter_user
-        return twitter_user
+        while(True):
+            for user in list(self.__users.keys()):
+                if user == handle:
+                    return self.__users[handle]
+            user_response = self.__client.get_user(username=handle)
+            try:
+                assert user_response.data is not None
+                rules = self.get_rules().data
+                rule_present = False
+                for rule in rules:
+                    if handle in rule.value:
+                        rule_present = True
+                if not rule_present:
+                    self.add_rules(tweepy.StreamRule("lang:en -is:retweet -is:reply from:"+handle))
+                twitter_user : TwitterUser = TwitterUser(user_response)
+                self.add_tweet_listener(twitter_user)
+                self.__users[handle] = twitter_user
+                return twitter_user
+            except AssertionError:
+                print("No User found with that handle")
+                handle = input("Different Handle: ")
     
     @staticmethod
     def get_client():
