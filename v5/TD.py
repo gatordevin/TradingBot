@@ -15,7 +15,10 @@ class TDOrder():
         self.duration = self.__order_dict["duration"]
         self.order_leg_collection = self.__order_dict.get("orderLegCollection", [])
         self.symbol = self.order_leg_collection[0]["instrument"]["symbol"]
-        self.option_type = self.order_leg_collection[0]["instrument"]["putCall"]
+        if(self.order_leg_collection[0]["instrument"]["assetType"] == "EQUITY"):
+            self.option_type = None
+        else:
+            self.option_type = self.order_leg_collection[0]["instrument"]["putCall"]
         self.order_type = self.__order_dict["orderType"]
         self.complex_order_strategy_type = self.__order_dict["complexOrderStrategyType"]
         self.quantity = self.__order_dict["quantity"]
@@ -47,6 +50,9 @@ class TDOrder():
                 child_order = TDOrder(strategy)
                 child_orders.append(child_order)
         return child_orders
+
+    def get_order_dict(self) -> dict:
+        return {}
 
 
     def __str__(self) -> str:
@@ -297,6 +303,42 @@ class TDSymbol():
     def add_symbol_listeners(self, listener):
         listener.on_symbol_update(self)
         self.__symbol_listeners.append(listener)
+class TDBaseOrder():
+    def __init__(self):
+        super().__init__()
+
+    def get_order_dict(self):
+        pass
+
+class TDStockOrder(TDBaseOrder):
+    def __init__(self, stock_symbol : TDSymbol, quantity : int, price):
+        super().__init__()
+        self.__stock_symbol = stock_symbol
+        self.__quantity = quantity
+        self.__price = price
+        self.make_dict()
+
+    def get_order_dict(self):
+        return self.order_dict
+    
+    def make_dict(self):
+        self.order_dict = {
+        "orderType": "LIMIT",
+        "session": "NORMAL",
+        "price": str(round(self.__price,2)),
+        "duration": "DAY",
+        "orderStrategyType": "SINGLE",
+        "orderLegCollection": [
+            {
+            "instruction": "Buy",
+            "quantity": self.__quantity,
+            "instrument": {
+                "symbol": self.__stock_symbol.symbol,
+                "assetType": "EQUITY"
+            }
+            }
+        ]
+        }
 
 class TDApi():
     td_api = None
@@ -440,6 +482,16 @@ class TDApi():
 
     def get_symbol(self):
         pass
+
+    def fill_order(self, td_order : TDBaseOrder, td_account : TDAccount):
+        while True:
+            try:
+                order = self.__td_client.place_order(account_id=td_account.id,order_spec=td_order.get_order_dict())
+                print(td_order.get_order_dict())
+                return order
+            except HTTPError:
+                print("Failed to place order")
+            sleep(1)
 
     def get_stream_client(self) -> StreamClient:
         for account in self.__accounts:

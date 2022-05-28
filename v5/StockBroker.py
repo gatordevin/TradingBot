@@ -5,7 +5,7 @@ class StockBrokerSink():
         super().__init__()
         self.sources = []
 
-    def on_broker_sink(self, data : dict):
+    def on_broker_sink(self, data : TDSymbol):
         pass
 
     def on_sink_add(self, source):
@@ -20,7 +20,7 @@ class StockBrokerSource():
         self.__broker_sinks.append(sink)
         sink.on_sink_add(self)
 
-    def on_broker_source(self, data : dict):
+    def on_broker_source(self, data : TDSymbol):
         for sink in self.__broker_sinks:
             sink.on_broker_sink(data)
 
@@ -56,6 +56,12 @@ class TDInfoSource(AccountChangeSource, StockBrokerSource):
         self.__td_api : TDApi = TDApi.get_td_api()
         self.__td_account : TDAccount = self.__td_api.get_account(account_name)
         self.__td_account.add_account_listener(self)
+
+    def get_td_account(self):
+        return self.__td_account
+
+    def get_td_api(self):
+        return self.__td_api
     
     def on_account_change(self, account):
         self.on_account_change_source(account)
